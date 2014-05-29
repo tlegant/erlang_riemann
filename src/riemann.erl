@@ -161,12 +161,14 @@ stop() ->
 %%%===================================================================
 
 init([]) ->
-  case setup_riemann_connectivity(#state{}) of
-    {error, Reason} ->
+  S = case setup_riemann_connectivity(#state{}) of
+    {{error, Reason}, S1} ->
       lager:error("Could not setup connections to riemann: ~p", [Reason]),
-      {stop, {shutdown, Reason}};
-    Other -> Other
-  end.
+      S1;
+    {ok, S1} ->
+      S1
+  end,
+  {ok, S}.
 
 handle_call({send, Entities}, _From, S0) ->
   {Reply, S1} = case send_entities(Entities, S0) of
@@ -230,9 +232,9 @@ setup_tcp_socket(#state{tcp_socket=undefined, host=Host, port=Port}=S) ->
       {ok, S#state{tcp_socket = TcpSocket}};
     {error, Reason} ->
       lager:error("Failed opening a Tcp socket to riemann with reason ~p", [Reason]),
-      {error, Reason}
+      {{error, Reason}, S}
   end;
-setup_tcp_socket(S) -> S.
+setup_tcp_socket(S) -> {ok, S}.
 
 get_env(Name, Default) ->
   case application:get_env(riemann, Name) of
@@ -276,7 +278,7 @@ send_with_tcp(Msg, #state{tcp_socket=TcpSocket}=S) ->
       case setup_riemann_connectivity(S#state{tcp_socket = undefined}) of
         {ok, S1} ->
           send_with_tcp(Msg, S1);
-        {error, Reason} ->
+        {{error, Reason}, _} ->
           lager:error("Re-establishing a tcp connection to riemann failed because of ~p", [Reason]),
           {{error, Reason}, S}
       end;
