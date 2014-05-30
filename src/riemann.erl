@@ -198,8 +198,14 @@ handle_info(_Info, State) ->
   {noreply, State}.
 
 terminate(_Reason, #state{udp_socket=UdpSocket, tcp_socket=TcpSocket}) ->
-  gen_udp:close(UdpSocket),
-  gen_tcp:close(TcpSocket),
+  if
+    UdpSocket =/= undefined -> gen_udp:close(UdpSocket);
+    true -> ok
+  end,
+  if
+    TcpSocket =/= undefined -> gen_tcp:close(TcpSocket);
+    true -> ok
+  end,
   ok.
 
 code_change(_OldVsn, State, _Extra) ->
