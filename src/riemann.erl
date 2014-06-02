@@ -332,7 +332,15 @@ set_event_val(host, V, E) -> E#riemannevent{host=str(V)};
 set_event_val(description, V, E) -> E#riemannevent{description=str(V)};
 set_event_val(tags, Tags, E) -> E#riemannevent{tags=[str(T) || T <- Tags]};
 set_event_val(ttl, V, E) -> E#riemannevent{ttl=V};
-set_event_val(attributes, V, E) -> E#riemannevent{attributes=V}.
+set_event_val(attributes, [#riemannattribute{}=_|_]=V, E) ->
+  E#riemannevent{attributes=V};
+set_event_val(attributes, [A|_]=V, E) when is_tuple(A); is_list(A) ->
+  Attrs = lists:foldl(fun({Key, Val}, L) ->
+			    [#riemannattribute{key=Key, value=Val} | L];
+			 (Key, L) when is_list(Key) ->
+			    [#riemannattribute{key=Key} | L]
+		      end, [], V),
+  E#riemannevent{attributes=Attrs}.
 
 add_metric_value(Vals, Event) ->
   case proplists:get_value(metric, Vals, 0) of
